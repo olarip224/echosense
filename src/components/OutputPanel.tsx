@@ -24,6 +24,7 @@ interface Props {
   onVoiceChange: (id: string) => void
   onCopy: () => void
   onClear: () => void
+  onShare: () => void
   onOpenReference?: () => void
 }
 
@@ -41,9 +42,11 @@ export function OutputPanel({
   onVoiceChange,
   onCopy,
   onClear,
+  onShare,
   onOpenReference,
 }: Props) {
   const [refOpen, setRefOpen] = useState(false)
+  const [shared, setShared] = useState(false)
 
   return (
     <div
@@ -273,7 +276,7 @@ export function OutputPanel({
           )}
         </div>
 
-        {/* Right: Reference + Copy + Download + Clear */}
+        {/* Right: Reference + Copy + Download + Share + Clear */}
         <div style={{ display: 'flex', gap: '6px' }}>
           {[
             { label: refOpen ? 'Reference ▴' : 'Reference ▾', action: () => setRefOpen((o) => !o) },
@@ -313,6 +316,25 @@ export function OutputPanel({
               {label}
             </button>
           ))}
+          <button
+            onClick={() => {
+              onShare()
+              setShared(true)
+              setTimeout(() => setShared(false), 2000)
+            }}
+            style={{
+              fontSize: '11px',
+              padding: '4px 10px',
+              borderRadius: '6px',
+              border: '1px solid #e2e8f0',
+              background: 'transparent',
+              color: shared ? '#1D9E75' : '#64748b',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {shared ? 'Linked!' : 'Share'}
+          </button>
         </div>
       </div>
     </div>

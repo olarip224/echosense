@@ -28,6 +28,7 @@ function App() {
   const [copied, setCopied] = useState(false)
   const [flashText, setFlashText] = useState<string | null>(null)
   const [practiceMode, setPracticeMode] = useState(false)
+  const [sharedTranscriptLoaded, setSharedTranscriptLoaded] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [signCount, setSignCount] = useState(0)
   const [sensitivity, setSensitivity] = useState<'fast' | 'medium' | 'slow'>('medium')
@@ -64,6 +65,29 @@ function App() {
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
+  }, [])
+
+  // Load shared transcript from URL on mount
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const encoded = params.get('transcript')
+      if (!encoded) return
+
+      const decoded = decodeURIComponent(atob(encoded))
+      const lines = decoded.split('\n').filter((line) => line.trim().length > 0)
+
+      if (lines.length === 0) return
+
+      lines.forEach((line) => addPhrase(line))
+
+      setSharedTranscriptLoaded(true)
+      setTimeout(() => setSharedTranscriptLoaded(false), 3000)
+
+      window.history.replaceState({}, document.title, window.location.pathname)
+    } catch (e) {
+      console.warn('Could not parse shared transcript:', e)
+    }
   }, [])
 
   function formatTime(s: number): string {
@@ -176,6 +200,14 @@ function App() {
     setTimeout(() => setCopied(false), 2000)
   }
 
+  function handleShare() {
+    if (transcript.length === 0) return
+    const raw = transcript.join('\n')
+    const encoded = btoa(encodeURIComponent(raw))
+    const url = window.location.origin + window.location.pathname + '?transcript=' + encoded
+    navigator.clipboard.writeText(url)
+  }
+
   function onReady(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
     ;(videoRef as React.MutableRefObject<HTMLVideoElement>).current = video
     ;(canvasRef as React.MutableRefObject<HTMLCanvasElement>).current = canvas
@@ -232,6 +264,7 @@ function App() {
             <div style={{ marginTop: '20px', fontSize: '13px', color: '#334155', lineHeight: 1.7 }}>
               <p>Supports 7 quick response gestures, full ASL alphabet A–Z, and numbers 0–9.</p>
               <p style={{ marginTop: '8px' }}>Built with React, MediaPipe, and ElevenLabs at BitCamp 2026.</p>
+              <p style={{ marginTop: '8px' }}>Share your session transcript as a link — anyone with the link can view your signs instantly, no account required.</p>
               <p style={{ marginTop: '8px', color: '#1D9E75', fontStyle: 'italic' }}>
                 500,000+ ASL users in the US deserve spontaneous communication.
               </p>
@@ -370,6 +403,21 @@ function App() {
         </div>
       </header>
 
+      {/* Shared transcript banner */}
+      {sharedTranscriptLoaded && (
+        <div style={{
+          background: '#0F6E56',
+          color: 'white',
+          textAlign: 'center',
+          padding: '10px 24px',
+          fontSize: 13,
+          fontWeight: 500,
+          animation: 'fadeUp 0.3s ease-out',
+        }}>
+          Shared transcript loaded — {transcript.length} signs restored
+        </div>
+      )}
+
       {/* Main */}
       <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px' }}>
         <div className="main-grid">
@@ -392,6 +440,7 @@ function App() {
             selectedVoiceId={selectedVoiceId}
             onVoiceChange={setSelectedVoiceId}
             onCopy={onCopy}
+            onShare={handleShare}
             onClear={() => { clearTranscript(); resetSession() }}
             onOpenReference={() => setShowReference(true)}
           />
