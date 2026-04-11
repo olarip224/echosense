@@ -10,6 +10,12 @@ import { PracticeMode } from './components/PracticeMode'
 
 const ELEVENLABS_KEY = import.meta.env.VITE_ELEVENLABS_KEY ?? ''
 
+const VOICES = [
+  { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel' },
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella' },
+  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh' },
+]
+
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -19,6 +25,7 @@ function App() {
   const { speak, isSpeaking } = useTTS(ELEVENLABS_KEY)
 
   const [copied, setCopied] = useState(false)
+  const [selectedVoiceId, setSelectedVoiceId] = useState(VOICES[0].id)
   const [flashText, setFlashText] = useState<string | null>(null)
   const [practiceMode, setPracticeMode] = useState(false)
   const [sensitivity, setSensitivity] = useState<'fast' | 'medium' | 'slow'>('medium')
@@ -64,7 +71,7 @@ function App() {
       displayText !== lastCommittedRef.current
     ) {
       addPhrase(displayText)
-      speak(displayText)
+      speak(displayText, selectedVoiceId)
       setFlashText(displayText)
       setSignCount((c) => c + 1)
       lastCommittedRef.current = displayText
@@ -213,6 +220,9 @@ function App() {
             transcript={transcript}
             isSpeaking={isSpeaking}
             copied={copied}
+            voices={VOICES}
+            selectedVoiceId={selectedVoiceId}
+            onVoiceChange={setSelectedVoiceId}
             onCopy={onCopy}
             onClear={() => { clearTranscript(); resetSession() }}
           />

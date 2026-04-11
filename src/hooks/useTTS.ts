@@ -3,7 +3,7 @@ import { useState } from 'react'
 export function useTTS(apiKey: string) {
   const [isSpeaking, setIsSpeaking] = useState(false)
 
-  function speak(text: string) {
+  function speak(text: string, voiceId: string) {
     if (!apiKey) {
       const u = new SpeechSynthesisUtterance(text)
       u.rate = 0.9
@@ -11,7 +11,7 @@ export function useTTS(apiKey: string) {
       return
     }
 
-    fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM/stream', {
+    fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`, {
       method: 'POST',
       headers: {
         'xi-api-key': apiKey,

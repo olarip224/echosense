@@ -7,6 +7,9 @@ interface Props {
   transcript: string[]
   isSpeaking: boolean
   copied: boolean
+  voices: Array<{ id: string; name: string }>
+  selectedVoiceId: string
+  onVoiceChange: (id: string) => void
   onCopy: () => void
   onClear: () => void
 }
@@ -20,6 +23,9 @@ export function OutputPanel({
   transcript,
   isSpeaking,
   copied,
+  voices,
+  selectedVoiceId,
+  onVoiceChange,
   onCopy,
   onClear,
 }: Props) {
@@ -165,7 +171,25 @@ export function OutputPanel({
           justifyContent: 'space-between',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '10px', color: '#94a3b8' }}>Voice:</span>
+          <select
+            value={selectedVoiceId}
+            onChange={(e) => onVoiceChange(e.target.value)}
+            style={{
+              fontSize: '11px',
+              color: '#64748b',
+              border: '1px solid #e2e8f0',
+              borderRadius: '6px',
+              padding: '2px 6px',
+              background: 'transparent',
+              cursor: 'pointer',
+            }}
+          >
+            {voices.map((v) => (
+              <option key={v.id} value={v.id}>{v.name}</option>
+            ))}
+          </select>
           {isSpeaking && (
             <>
               <div
