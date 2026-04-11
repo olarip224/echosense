@@ -138,7 +138,7 @@ function App() {
           {landmarks !== null && (
             <span style={{ fontSize: '12px', color: '#1D9E75' }}>Hand detected</span>
           )}
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
+          <span className="session-stats" style={{ fontSize: '12px', color: '#64748b' }}>
             {signCount} signs · {formatTime(elapsed)}
           </span>
           <span style={{ fontSize: '12px', color: '#64748b' }}>
@@ -196,15 +196,7 @@ function App() {
           padding: '32px 24px',
         }}
       >
-        <div
-          className="main-grid"
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '640px 1fr',
-            gap: '24px',
-            alignItems: 'start',
-          }}
-        >
+        <div className="main-grid">
           {/* Left — Camera */}
           <CameraView
             landmarks={landmarks}

@@ -68,8 +68,9 @@ export function CameraView({ landmarks, gestureName, isLoaded, onReady }: Props)
     <div
       style={{
         position: 'relative',
-        width: '640px',
-        height: '480px',
+        width: '100%',
+        maxWidth: '640px',
+        aspectRatio: '4/3',
         background: '#000',
         borderRadius: '12px',
         overflow: 'hidden',
