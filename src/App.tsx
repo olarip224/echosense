@@ -2,6 +2,9 @@ import { useRef, useState, useEffect } from 'react'
 import { useGestureRecognizer } from './hooks/useGestureRecognizer'
 import { useTranscript } from './hooks/useTranscript'
 import { useTTS } from './hooks/useTTS'
+import { useCNNClassifier } from './hooks/useCNNClassifier'
+import { useLSTMClassifier } from './hooks/useLSTMClassifier'
+import { useLandmarkBuffer } from './hooks/useLandmarkBuffer'
 import { getDisplayText, GESTURE_MAP } from './utils/gestureMap'
 import { CameraView } from './components/CameraView'
 import { OutputPanel } from './components/OutputPanel'
@@ -21,7 +24,19 @@ function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  const { landmarks, gestureName, gestureScore, isLoaded } = useGestureRecognizer(videoRef)
+  const cnnClassifier = useCNNClassifier()
+  const lstmClassifier = useLSTMClassifier()
+  const { addFrame, getBuffer, isReady: isBufferReady, clearBuffer } = useLandmarkBuffer()
+
+  const { landmarks, gestureName, gestureScore, isLoaded } = useGestureRecognizer(videoRef, {
+    cnnClassify: cnnClassifier.classify,
+    cnnAvailable: cnnClassifier.isAvailable,
+    lstmClassify: lstmClassifier.classifySequence,
+    lstmAvailable: lstmClassifier.isAvailable,
+    getLandmarkBuffer: getBuffer,
+    isBufferReady,
+    videoElement: videoRef.current,
+  })
   const { transcript, addPhrase, clearTranscript } = useTranscript()
   const { speak, isSpeaking } = useTTS(ELEVENLABS_KEY)
 
@@ -110,6 +125,9 @@ function App() {
 
   // Gesture commit logic
   useEffect(() => {
+    // Feed landmarks into the rolling buffer for LSTM
+    addFrame(landmarks)
+
     if (gestureName === prevGestureRef.current && gestureName !== null && gestureName !== 'None') {
       holdCountRef.current += 1
     } else {
@@ -322,6 +340,29 @@ function App() {
             {isLoaded ? 'Model ready' : 'Loading model...'}
           </span>
 
+          {/* Classifier status indicator */}
+          {(() => {
+            const classifierStatus =
+              cnnClassifier.isAvailable && lstmClassifier.isAvailable
+                ? { text: 'CNN + LSTM active', color: '#1D9E75' }
+                : cnnClassifier.isAvailable
+                ? { text: 'CNN active', color: '#1D9E75' }
+                : lstmClassifier.isAvailable
+                ? { text: 'LSTM active', color: '#1D9E75' }
+                : { text: 'Geometric classifier (no model files)', color: '#64748b' }
+            return (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{
+                  width: '6px', height: '6px', borderRadius: '50%',
+                  background: classifierStatus.color, flexShrink: 0,
+                }} />
+                <span style={{ fontSize: '11px', color: classifierStatus.color }}>
+                  {classifierStatus.text}
+                </span>
+              </span>
+            )
+          })()}
+
           {/* Mode toggle */}
           <div style={{ display: 'flex', gap: '4px' }}>
             {(['phrase', 'spell'] as const).map((m) => (
@@ -441,7 +482,7 @@ function App() {
             onVoiceChange={setSelectedVoiceId}
             onCopy={onCopy}
             onShare={handleShare}
-            onClear={() => { clearTranscript(); resetSession() }}
+            onClear={() => { clearTranscript(); resetSession(); clearBuffer() }}
             onOpenReference={() => setShowReference(true)}
           />
         </div>
