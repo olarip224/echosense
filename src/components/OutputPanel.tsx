@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { VOCABULARY_SECTIONS } from '../utils/gestureMap'
+
+const QUICK_RESPONSES = [
+  { key: 'Thumb_Up', label: 'Yes' },
+  { key: 'Thumb_Down', label: 'No' },
+  { key: 'Open_Palm', label: 'Stop' },
+  { key: 'Closed_Fist', label: 'Wait' },
+  { key: 'Victory', label: 'Hello' },
+  { key: 'ILoveYou', label: 'I love you' },
+  { key: 'Pointing_Up', label: 'One moment' },
+]
 
 interface Props {
   currentGesture: string | null
@@ -15,6 +24,7 @@ interface Props {
   onVoiceChange: (id: string) => void
   onCopy: () => void
   onClear: () => void
+  onOpenReference?: () => void
 }
 
 export function OutputPanel({
@@ -31,6 +41,7 @@ export function OutputPanel({
   onVoiceChange,
   onCopy,
   onClear,
+  onOpenReference,
 }: Props) {
   const [refOpen, setRefOpen] = useState(false)
 
@@ -156,55 +167,62 @@ export function OutputPanel({
         )}
       </div>
 
-      {/* REFERENCE PANEL (when open) */}
+      {/* QUICK RESPONSE STRIP (when open) */}
       {refOpen && (
         <div
           style={{
-            maxHeight: '200px',
-            overflowY: 'auto',
             borderTop: '1px solid #f1f5f9',
             padding: '12px',
             background: '#fafafa',
             marginTop: '8px',
           }}
         >
-          {VOCABULARY_SECTIONS.map((sec) => (
-            <div key={sec.section} style={{ marginBottom: '10px' }}>
-              <div
-                style={{
-                  fontSize: '10px',
-                  textTransform: 'uppercase',
-                  color: '#94a3b8',
-                  letterSpacing: '0.06em',
-                  marginBottom: '4px',
-                }}
-              >
-                {sec.section}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {sec.entries.map((entry) => {
-                  const active = entry.key === currentGesture
-                  return (
-                    <span
-                      key={entry.key}
-                      style={{
-                        borderRadius: '20px',
-                        padding: '3px 9px',
-                        fontSize: '11px',
-                        margin: '2px',
-                        background: active ? '#1D9E75' : '#f1f5f9',
-                        color: active ? '#ffffff' : '#334155',
-                        border: active ? 'none' : '1px solid #e2e8f0',
-                        transition: 'background 150ms ease',
-                      }}
-                    >
-                      {entry.label}
-                    </span>
-                  )
-                })}
-              </div>
+          <div
+            style={{
+              fontSize: '10px',
+              textTransform: 'uppercase',
+              color: '#94a3b8',
+              letterSpacing: '0.06em',
+              marginBottom: '8px',
+            }}
+          >
+            Quick responses
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {QUICK_RESPONSES.map((entry) => {
+              const active = entry.key === currentGesture
+              return (
+                <span
+                  key={entry.key}
+                  style={{
+                    borderRadius: '20px',
+                    padding: '5px 10px',
+                    fontSize: '12px',
+                    background: active ? '#1D9E75' : '#f1f5f9',
+                    color: active ? '#ffffff' : '#334155',
+                    border: active ? '1px solid #1D9E75' : '1px solid #e2e8f0',
+                    transition: 'background 150ms ease',
+                  }}
+                >
+                  {entry.label}
+                </span>
+              )
+            })}
+          </div>
+          {onOpenReference && (
+            <div
+              onClick={onOpenReference}
+              style={{
+                marginTop: '8px',
+                fontSize: '11px',
+                color: '#1D9E75',
+                cursor: 'pointer',
+                textDecoration: 'underline',
+              }}
+            >
+              View all signs →
             </div>
-          ))}
+          )}
         </div>
       )}
 

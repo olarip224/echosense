@@ -7,6 +7,7 @@ import { CameraView } from './components/CameraView'
 import { OutputPanel } from './components/OutputPanel'
 import { GestureFlash } from './components/GestureFlash'
 import { PracticeMode } from './components/PracticeMode'
+import { ReferenceSheet } from './components/ReferenceSheet'
 
 const ELEVENLABS_KEY = import.meta.env.VITE_ELEVENLABS_KEY ?? ''
 
@@ -34,14 +35,35 @@ function App() {
   const [mode, setMode] = useState<'phrase' | 'spell'>('phrase')
   const [currentWord, setCurrentWord] = useState('')
   const [showAbout, setShowAbout] = useState(false)
+  const [showReference, setShowReference] = useState(false)
 
   // Refs for spell mode (avoid stale closures in useEffect)
   const modeRef = useRef<'phrase' | 'spell'>('phrase')
   const currentWordRef = useRef('')
+  const showReferenceRef = useRef(false)
+
+  useEffect(() => { showReferenceRef.current = showReference }, [showReference])
 
   useEffect(() => {
     const id = setInterval(() => setElapsed((e) => e + 1), 1000)
     return () => clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return
+      if (e.key === '?' || (e.key === 'r' && e.ctrlKey)) {
+        setShowReference((r) => !r)
+      } else if (e.key === 'Escape') {
+        if (showReferenceRef.current) {
+          setShowReference(false)
+        } else {
+          clearTranscript()
+        }
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
   }, [])
 
   function formatTime(s: number): string {
@@ -163,6 +185,13 @@ function App() {
     <div style={{ background: '#0f172a', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <GestureFlash text={flashText} />
 
+      {showReference && (
+        <ReferenceSheet
+          onClose={() => setShowReference(false)}
+          currentGesture={gestureName}
+        />
+      )}
+
       {practiceMode && (
         <PracticeMode
           currentGesture={gestureName}
@@ -282,6 +311,17 @@ function App() {
             ))}
           </div>
 
+          {/* ASL Guide */}
+          <button
+            onClick={() => setShowReference(true)}
+            style={{
+              fontSize: '11px', padding: '4px 12px', borderRadius: '20px',
+              border: '1px solid #334155', background: 'transparent', color: '#94a3b8', cursor: 'pointer',
+            }}
+          >
+            ASL Guide
+          </button>
+
           {/* Speed control */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
             <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.06em' }}>
@@ -353,6 +393,7 @@ function App() {
             onVoiceChange={setSelectedVoiceId}
             onCopy={onCopy}
             onClear={() => { clearTranscript(); resetSession() }}
+            onOpenReference={() => setShowReference(true)}
           />
         </div>
       </main>
