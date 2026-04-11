@@ -183,6 +183,22 @@ export function OutputPanel({
         <div style={{ display: 'flex', gap: '6px' }}>
           {[
             { label: copied ? 'Copied!' : 'Copy', action: onCopy },
+            {
+              label: 'Download',
+              action: () => {
+                const content =
+                  'EchoSense Transcript\n' +
+                  'Generated: ' + new Date().toLocaleString() + '\n' +
+                  '---\n' +
+                  transcript.join('\n')
+                const url = URL.createObjectURL(new Blob([content], { type: 'text/plain' }))
+                const a = document.createElement('a')
+                a.href = url
+                a.download = 'echosense-transcript-' + Date.now() + '.txt'
+                a.click()
+                URL.revokeObjectURL(url)
+              },
+            },
             { label: 'Clear', action: onClear },
           ].map(({ label, action }) => (
             <button
