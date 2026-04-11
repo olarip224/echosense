@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ASL_REFERENCE, TOTAL_SIGNS } from '../data/aslReference'
+import { HandDiagram } from './HandDiagram'
 
 interface Props {
   onClose: () => void
@@ -240,13 +241,21 @@ export function ReferenceSheet({ onClose, currentGesture }: Props) {
                         padding: '10px 12px',
                         marginBottom: '10px',
                         boxSizing: 'border-box',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '12px',
                       }}
                     >
-                      <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px' }}>
-                        Hand shape:
+                      <div style={{ flexShrink: 0 }}>
+                        <HandDiagram gestureKey={sign.gestureKey} size={80} active={isDetected} />
                       </div>
-                      <div style={{ fontSize: '11px', color: '#cbd5e1' }}>
-                        {sign.fingers}
+                      <div>
+                        <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px' }}>
+                          Hand shape:
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.5 }}>
+                          {sign.fingers}
+                        </div>
                       </div>
                     </div>
 
