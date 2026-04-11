@@ -6,6 +6,7 @@ import { getDisplayText } from './utils/gestureMap'
 import { CameraView } from './components/CameraView'
 import { OutputPanel } from './components/OutputPanel'
 import { GestureFlash } from './components/GestureFlash'
+import { PracticeMode } from './components/PracticeMode'
 
 const ELEVENLABS_KEY = import.meta.env.VITE_ELEVENLABS_KEY ?? ''
 
@@ -19,6 +20,7 @@ function App() {
 
   const [copied, setCopied] = useState(false)
   const [flashText, setFlashText] = useState<string | null>(null)
+  const [practiceMode, setPracticeMode] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [signCount, setSignCount] = useState(0)
 
@@ -94,6 +96,13 @@ function App() {
       }}
     >
       <GestureFlash text={flashText} />
+      {practiceMode && (
+        <PracticeMode
+          currentGesture={gestureName}
+          gestureScore={gestureScore}
+          onExit={() => setPracticeMode(false)}
+        />
+      )}
       {/* Header */}
       <header
         style={{
@@ -127,6 +136,20 @@ function App() {
           <span style={{ fontSize: '12px', color: '#64748b' }}>
             {isLoaded ? 'Model ready' : 'Loading model...'}
           </span>
+          <button
+            onClick={() => setPracticeMode(true)}
+            style={{
+              fontSize: '12px',
+              padding: '5px 12px',
+              borderRadius: '6px',
+              border: '1px solid #1D9E75',
+              background: 'transparent',
+              color: '#1D9E75',
+              cursor: 'pointer',
+            }}
+          >
+            Practice
+          </button>
         </div>
       </header>
 
