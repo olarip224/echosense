@@ -1,25 +1,134 @@
-import { useRef } from 'react'
-import { CameraView } from './components/CameraView'
+import { useRef, useState, useEffect } from 'react'
 import { useGestureRecognizer } from './hooks/useGestureRecognizer'
+import { useTranscript } from './hooks/useTranscript'
+import { getDisplayText } from './utils/gestureMap'
+import { CameraView } from './components/CameraView'
+import { OutputPanel } from './components/OutputPanel'
 
 function App() {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const { landmarks, gestureName } = useGestureRecognizer(videoRef)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
-  function handleReady(video: HTMLVideoElement, _canvas: HTMLCanvasElement) {
-    ;(videoRef as React.MutableRefObject<HTMLVideoElement>).current = video
+  const { landmarks, gestureName, gestureScore, isLoaded } = useGestureRecognizer(videoRef)
+  const { transcript, addPhrase, clearTranscript } = useTranscript()
+
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const displayText = getDisplayText(gestureName)
+
+  const holdCountRef = useRef(0)
+  const lastCommittedRef = useRef('')
+  const prevGestureRef = useRef<string | null>(null)
+
+  // Gesture commit with debounce — hold for 20 frames before adding to transcript
+  useEffect(() => {
+    if (gestureName === prevGestureRef.current && gestureName !== null && gestureName !== 'None') {
+      holdCountRef.current += 1
+    } else {
+      holdCountRef.current = 0
+    }
+    prevGestureRef.current = gestureName
+
+    if (
+      holdCountRef.current >= 20 &&
+      displayText !== '' &&
+      displayText !== lastCommittedRef.current
+    ) {
+      addPhrase(displayText)
+      lastCommittedRef.current = displayText
+      holdCountRef.current = 0
+    }
+  }, [gestureName])
+
+  function onCopy() {
+    navigator.clipboard.writeText(transcript.join(', '))
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
+
+  function onReady(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
+    ;(videoRef as React.MutableRefObject<HTMLVideoElement>).current = video
+    ;(canvasRef as React.MutableRefObject<HTMLCanvasElement>).current = canvas
+  }
+
+  // suppress unused warning — isSpeaking will be set by TTS in next phase
+  void setIsSpeaking
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center"
-      style={{ background: '#0f172a' }}
+      style={{
+        background: '#0f172a',
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
     >
-      <CameraView
-        landmarks={landmarks}
-        gestureName={gestureName}
-        onReady={handleReady}
-      />
+      {/* Header */}
+      <header
+        style={{
+          padding: '16px 32px',
+          borderBottom: '1px solid #1e293b',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ color: '#ffffff', fontSize: '18px', fontWeight: 500 }}>EchoSense</span>
+          <div
+            style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              background: '#1D9E75',
+              flexShrink: 0,
+            }}
+          />
+          <span style={{ fontSize: '11px', color: '#1D9E75' }}>Live</span>
+        </div>
+        <span style={{ fontSize: '12px', color: '#64748b' }}>
+          {isLoaded ? 'Model ready' : 'Loading model...'}
+        </span>
+      </header>
+
+      {/* Main */}
+      <main
+        style={{
+          flex: 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '32px 24px',
+        }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '640px 1fr',
+            gap: '24px',
+            alignItems: 'start',
+          }}
+        >
+          {/* Left — Camera */}
+          <CameraView
+            landmarks={landmarks}
+            gestureName={gestureName}
+            onReady={onReady}
+          />
+
+          {/* Right — Output */}
+          <OutputPanel
+            currentGesture={gestureName}
+            displayText={displayText}
+            confidence={gestureScore}
+            transcript={transcript}
+            isSpeaking={isSpeaking}
+            onCopy={onCopy}
+            onClear={clearTranscript}
+          />
+        </div>
+      </main>
     </div>
   )
 }
