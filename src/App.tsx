@@ -21,6 +21,7 @@ function App() {
   const [copied, setCopied] = useState(false)
   const [flashText, setFlashText] = useState<string | null>(null)
   const [practiceMode, setPracticeMode] = useState(false)
+  const [sensitivity, setSensitivity] = useState<'fast' | 'medium' | 'slow'>('medium')
   const [elapsed, setElapsed] = useState(0)
   const [signCount, setSignCount] = useState(0)
 
@@ -35,13 +36,20 @@ function App() {
     return `${m}m ${sec.toString().padStart(2, '0')}s`
   }
 
+  const HOLD_THRESHOLD = sensitivity === 'fast' ? 10 : sensitivity === 'slow' ? 30 : 20
+
   const displayText = getDisplayText(gestureName)
 
   const holdCountRef = useRef(0)
   const lastCommittedRef = useRef('')
   const prevGestureRef = useRef<string | null>(null)
 
-  // Gesture commit with debounce — hold for 20 frames before adding to transcript
+  // Reset hold count when sensitivity changes to avoid stale carry-over
+  useEffect(() => {
+    holdCountRef.current = 0
+  }, [sensitivity])
+
+  // Gesture commit with debounce — hold for HOLD_THRESHOLD frames before adding to transcript
   useEffect(() => {
     if (gestureName === prevGestureRef.current && gestureName !== null && gestureName !== 'None') {
       holdCountRef.current += 1
@@ -51,7 +59,7 @@ function App() {
     prevGestureRef.current = gestureName
 
     if (
-      holdCountRef.current >= 20 &&
+      holdCountRef.current >= HOLD_THRESHOLD &&
       displayText !== '' &&
       displayText !== lastCommittedRef.current
     ) {
@@ -136,6 +144,31 @@ function App() {
           <span style={{ fontSize: '12px', color: '#64748b' }}>
             {isLoaded ? 'Model ready' : 'Loading model...'}
           </span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+            <span style={{ fontSize: '10px', textTransform: 'uppercase', color: '#64748b', letterSpacing: '0.06em' }}>
+              Speed
+            </span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {(['fast', 'medium', 'slow'] as const).map((s) => (
+                <button
+                  key={s}
+                  onClick={() => setSensitivity(s)}
+                  style={{
+                    fontSize: '11px',
+                    padding: '3px 10px',
+                    borderRadius: '20px',
+                    border: sensitivity === s ? 'none' : '1px solid #334155',
+                    background: sensitivity === s ? '#1D9E75' : 'transparent',
+                    color: sensitivity === s ? '#ffffff' : '#64748b',
+                    cursor: 'pointer',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             onClick={() => setPracticeMode(true)}
             style={{
