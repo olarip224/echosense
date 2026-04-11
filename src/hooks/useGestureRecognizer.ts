@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { GestureRecognizer, FilesetResolver } from '@mediapipe/tasks-vision'
+import { classifyASLGesture } from '../utils/aslClassifier'
+
+const MEDIAPIPE_BUILTINS = new Set([
+  'Thumb_Up', 'Thumb_Down', 'Open_Palm', 'Closed_Fist',
+  'Victory', 'ILoveYou', 'Pointing_Up',
+])
 
 interface GestureResult {
   landmarks: Array<{ x: number; y: number; z: number }> | null
@@ -57,9 +63,22 @@ export function useGestureRecognizer(
       const recognizer = recognizerRef.current
       if (video && recognizer && video.readyState >= 2) {
         const results = recognizer.recognizeForVideo(video, Date.now())
-        setLandmarks(results.landmarks[0] ?? null)
-        setGestureName(results.gestures[0]?.[0]?.categoryName ?? null)
-        setGestureScore(results.gestures[0]?.[0]?.score ?? 0)
+
+        const rawLandmarks = results.landmarks[0] ?? null
+        const mediapipeGesture = results.gestures[0]?.[0]?.categoryName ?? null
+        const score = results.gestures[0]?.[0]?.score ?? 0
+
+        // Priority: MediaPipe built-in > custom ASL classifier > None
+        let resolved: string | null = null
+        if (mediapipeGesture && mediapipeGesture !== 'None' && MEDIAPIPE_BUILTINS.has(mediapipeGesture)) {
+          resolved = mediapipeGesture
+        } else if (rawLandmarks) {
+          resolved = classifyASLGesture(rawLandmarks)
+        }
+
+        setLandmarks(rawLandmarks)
+        setGestureName(resolved ?? 'None')
+        setGestureScore(score)
       }
       rafRef.current = requestAnimationFrame(loop)
     }

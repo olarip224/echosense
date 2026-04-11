@@ -1,4 +1,5 @@
-import { GESTURE_MAP } from '../utils/gestureMap'
+import { useState } from 'react'
+import { VOCABULARY_SECTIONS } from '../utils/gestureMap'
 
 interface Props {
   currentGesture: string | null
@@ -7,14 +8,14 @@ interface Props {
   transcript: string[]
   isSpeaking: boolean
   copied: boolean
+  mode: 'phrase' | 'spell'
+  currentWord: string
   voices: Array<{ id: string; name: string }>
   selectedVoiceId: string
   onVoiceChange: (id: string) => void
   onCopy: () => void
   onClear: () => void
 }
-
-const GESTURE_ENTRIES = Object.entries(GESTURE_MAP).filter(([, v]) => v !== '')
 
 export function OutputPanel({
   currentGesture,
@@ -23,12 +24,16 @@ export function OutputPanel({
   transcript,
   isSpeaking,
   copied,
+  mode,
+  currentWord,
   voices,
   selectedVoiceId,
   onVoiceChange,
   onCopy,
   onClear,
 }: Props) {
+  const [refOpen, setRefOpen] = useState(false)
+
   return (
     <div
       style={{
@@ -90,6 +95,26 @@ export function OutputPanel({
         <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
           {currentGesture ?? ''}
         </div>
+
+        {/* Word builder (spell mode) */}
+        {mode === 'spell' && currentWord !== '' && (
+          <div style={{ marginTop: '10px' }}>
+            <div style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Building:
+            </div>
+            <span
+              className="word-cursor"
+              style={{ fontSize: '16px', fontFamily: 'monospace', color: '#0f172a', marginTop: '2px', display: 'inline-block' }}
+            >
+              {currentWord}
+            </span>
+          </div>
+        )}
+        {mode === 'spell' && currentWord === '' && (
+          <div style={{ marginTop: '8px', fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>
+            Spell mode: sign letters → Open Palm to commit word
+          </div>
+        )}
       </div>
 
       {/* MIDDLE */}
@@ -106,8 +131,8 @@ export function OutputPanel({
           Transcript
         </div>
         {transcript.length === 0 ? (
-          <div style={{ fontStyle: 'italic', fontSize: '13px', color: '#94a3b8' }}>
-            Signs will appear here
+          <div style={{ fontStyle: 'italic', fontSize: '12px', color: '#94a3b8', lineHeight: 1.5 }}>
+            Try signing: thumbs up = Yes · peace sign = Hello · or switch to Spell mode to build words letter by letter
           </div>
         ) : (
           <div>
@@ -131,34 +156,57 @@ export function OutputPanel({
         )}
       </div>
 
-      {/* GESTURE REFERENCE STRIP */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'row',
-          gap: '8px',
-          overflowX: 'auto',
-          paddingBottom: '6px',
-          marginTop: '12px',
-        }}
-      >
-        {GESTURE_ENTRIES.map(([raw, display]) => (
-          <div
-            key={raw}
-            style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              padding: '5px 8px',
-              whiteSpace: 'nowrap',
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ fontSize: '12px', color: '#0f172a' }}>{display}</div>
-            <div style={{ fontSize: '10px', color: '#94a3b8' }}>{raw}</div>
-          </div>
-        ))}
-      </div>
+      {/* REFERENCE PANEL (when open) */}
+      {refOpen && (
+        <div
+          style={{
+            maxHeight: '200px',
+            overflowY: 'auto',
+            borderTop: '1px solid #f1f5f9',
+            padding: '12px',
+            background: '#fafafa',
+            marginTop: '8px',
+          }}
+        >
+          {VOCABULARY_SECTIONS.map((sec) => (
+            <div key={sec.section} style={{ marginBottom: '10px' }}>
+              <div
+                style={{
+                  fontSize: '10px',
+                  textTransform: 'uppercase',
+                  color: '#94a3b8',
+                  letterSpacing: '0.06em',
+                  marginBottom: '4px',
+                }}
+              >
+                {sec.section}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {sec.entries.map((entry) => {
+                  const active = entry.key === currentGesture
+                  return (
+                    <span
+                      key={entry.key}
+                      style={{
+                        borderRadius: '20px',
+                        padding: '3px 9px',
+                        fontSize: '11px',
+                        margin: '2px',
+                        background: active ? '#1D9E75' : '#f1f5f9',
+                        color: active ? '#ffffff' : '#334155',
+                        border: active ? 'none' : '1px solid #e2e8f0',
+                        transition: 'background 150ms ease',
+                      }}
+                    >
+                      {entry.label}
+                    </span>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* BOTTOM */}
       <div
@@ -171,6 +219,7 @@ export function OutputPanel({
           justifyContent: 'space-between',
         }}
       >
+        {/* Left: voice + speaking */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{ fontSize: '10px', color: '#94a3b8' }}>Voice:</span>
           <select
@@ -205,8 +254,11 @@ export function OutputPanel({
             </>
           )}
         </div>
+
+        {/* Right: Reference + Copy + Download + Clear */}
         <div style={{ display: 'flex', gap: '6px' }}>
           {[
+            { label: refOpen ? 'Reference ▴' : 'Reference ▾', action: () => setRefOpen((o) => !o) },
             { label: copied ? 'Copied!' : 'Copy', action: onCopy },
             {
               label: 'Download',
@@ -237,6 +289,7 @@ export function OutputPanel({
                 background: 'transparent',
                 color: '#64748b',
                 cursor: 'pointer',
+                whiteSpace: 'nowrap',
               }}
             >
               {label}
