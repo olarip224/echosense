@@ -27,6 +27,9 @@ interface Props {
   onShare: () => void
   onOpenReference?: () => void
 
+  // Auth0
+  isAuthenticated: boolean
+
   // Phrase mode (FIX 2C)
   phraseTTSEnabled: boolean
   onPhraseTTSChange: (v: boolean) => void
@@ -58,6 +61,7 @@ export function OutputPanel({
   onClear,
   onShare,
   onOpenReference,
+  isAuthenticated,
   phraseTTSEnabled,
   onPhraseTTSChange,
   isSpellActive,
@@ -366,15 +370,51 @@ export function OutputPanel({
       <div style={{ flex: 1, overflowY: 'auto', marginBottom: '12px' }}>
         <div
           style={{
-            fontSize: '10px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.09em',
-            color: 'var(--text-3)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
             marginBottom: '10px',
-            fontWeight: 500,
           }}
         >
-          Transcript
+          <div
+            style={{
+              fontSize: '10px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.09em',
+              color: 'var(--text-3)',
+              fontWeight: 500,
+            }}
+          >
+            Transcript
+          </div>
+
+          {isAuthenticated ? (
+            <span
+              style={{
+                fontSize: '10px',
+                color: 'var(--primary)',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <polyline
+                  points="2,5 4,8 8,2"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Saved
+            </span>
+          ) : (
+            <span style={{ fontSize: '10px', color: 'var(--text-3)', fontStyle: 'italic' }}>
+              Sign in to save
+            </span>
+          )}
         </div>
 
         {transcript.length === 0 ? (

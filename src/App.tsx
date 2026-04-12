@@ -1,4 +1,5 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useCallback } from 'react'
+import { useAuth0 } from '@auth0/auth0-react'
 import { useGestureRecognizer } from './hooks/useGestureRecognizer'
 import { useTranscript } from './hooks/useTranscript'
 import { useTTS } from './hooks/useTTS'
@@ -17,6 +18,7 @@ import { ReferenceSheet } from './components/ReferenceSheet'
 import { LoaderScreen } from './components/LoaderScreen'
 import { CustomCursor } from './components/CustomCursor'
 import { AboutModal } from './components/AboutModal'
+import { AuthButton } from './components/AuthButton'
 
 const ELEVENLABS_KEY = import.meta.env.VITE_ELEVENLABS_KEY ?? ''
 
@@ -31,6 +33,21 @@ const HOLD_FRAMES = 60     // ~2 seconds at 30fps
 const COOLDOWN_FRAMES = 45 // ~1.5 seconds
 
 function App() {
+  // Auth0
+  const { isAuthenticated, user, getAccessTokenSilently } = useAuth0()
+
+  // Stable getter for the Anthropic call in useSentenceBuilder.
+  // Returns undefined if we can't mint a token (e.g. no audience set
+  // on the Auth0 app, or the user isn't logged in).
+  const getAccessToken = useCallback(async (): Promise<string | undefined> => {
+    if (!isAuthenticated) return undefined
+    try {
+      return await getAccessTokenSilently()
+    } catch {
+      return undefined
+    }
+  }, [isAuthenticated, getAccessTokenSilently])
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -49,7 +66,7 @@ function App() {
   })
   const { transcript, addPhrase, clearTranscript } = useTranscript()
   const { speak, isSpeaking } = useTTS(ELEVENLABS_KEY)
-  const sentenceBuilder = useSentenceBuilder()
+  const sentenceBuilder = useSentenceBuilder(getAccessToken)
 
   const [copied, setCopied] = useState(false)
   const [flashText, setFlashText] = useState<string | null>(null)
@@ -136,6 +153,39 @@ function App() {
       console.warn('Could not parse shared transcript:', e)
     }
   }, [])
+
+  // ── Auth0: load this user's saved transcript on login ─────────────
+  const transcriptHydratedRef = useRef(false)
+  useEffect(() => {
+    if (!isAuthenticated || !user?.sub) return
+    if (transcriptHydratedRef.current) return
+
+    const key = `echosense_transcript_${user.sub}`
+    const saved = localStorage.getItem(key)
+    if (saved) {
+      try {
+        const lines = JSON.parse(saved) as string[]
+        if (Array.isArray(lines)) {
+          lines.forEach((line) => addPhrase(line))
+        }
+      } catch {
+        /* ignore malformed data */
+      }
+    }
+    transcriptHydratedRef.current = true
+  }, [isAuthenticated, user])
+
+  // ── Auth0: persist the transcript to this user's storage slot ─────
+  useEffect(() => {
+    if (!isAuthenticated || !user?.sub) return
+    if (transcript.length === 0) return
+    const key = `echosense_transcript_${user.sub}`
+    try {
+      localStorage.setItem(key, JSON.stringify(transcript))
+    } catch {
+      /* quota exceeded / storage blocked — silently ignore */
+    }
+  }, [transcript, isAuthenticated, user])
 
   function formatTime(s: number): string {
     const m = Math.floor(s / 60)
@@ -642,6 +692,9 @@ function App() {
           >
             ?
           </button>
+
+          {/* Auth0 */}
+          <AuthButton />
         </div>
       </header>
 
@@ -713,8 +766,18 @@ function App() {
               onVoiceChange={setSelectedVoiceId}
               onCopy={onCopy}
               onShare={handleShare}
-              onClear={() => { clearTranscript(); resetSession(); clearBuffer(); onSpellClear() }}
+              onClear={() => {
+                clearTranscript()
+                resetSession()
+                clearBuffer()
+                onSpellClear()
+                // Also wipe the user's saved transcript so Clear is honest
+                if (isAuthenticated && user?.sub) {
+                  try { localStorage.removeItem(`echosense_transcript_${user.sub}`) } catch { /* ignore */ }
+                }
+              }}
               onOpenReference={() => setShowReference(true)}
+              isAuthenticated={isAuthenticated}
               phraseTTSEnabled={phraseTTSEnabled}
               onPhraseTTSChange={setPhraseTTSEnabled}
               isSpellActive={isSpellActive}

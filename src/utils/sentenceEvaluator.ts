@@ -276,7 +276,10 @@ No explanation. No alternatives. No quotation marks. Just the sentence.`
 }
 
 // ── Public API ───────────────────────────────────────────────────────
-export async function evaluateToSentence(parsed: ParsedPhrase): Promise<string> {
+export async function evaluateToSentence(
+  parsed: ParsedPhrase,
+  accessToken?: string,
+): Promise<string> {
   if (parsed.aslTokens.length === 0) return ''
 
   // FAST PATH — common cases never hit the LLM
@@ -294,7 +297,15 @@ export async function evaluateToSentence(parsed: ParsedPhrase): Promise<string> 
     return buildFallbackSentence(parsed)
   }
 
-  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
+  // Auth0 — if the caller passed an access token, attach it as a custom
+  // header. Proves the AI agent call originated from an authenticated
+  // EchoSense session (Auth0 for AI Agents).
+  const defaultHeaders: Record<string, string> = {}
+  if (accessToken) {
+    defaultHeaders['X-Auth-Token'] = accessToken
+  }
+
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, defaultHeaders })
 
   try {
     const message = await client.messages.create({

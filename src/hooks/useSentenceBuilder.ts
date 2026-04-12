@@ -13,12 +13,17 @@ export function formatStopwatch(s: number): string {
   return mins > 0 ? `${mins}:${secs.toString().padStart(2, '0')}` : `${secs}s`
 }
 
-export function useSentenceBuilder() {
+export function useSentenceBuilder(getAccessToken?: () => Promise<string | undefined>) {
   const signBuffer = useRef<string[]>([])
   const lastSignTime = useRef<number>(0)
   const autoCommitTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handDropTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const releaseTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Keep the access-token getter in a ref so prepareSentence can
+  // fetch a fresh token each call without widening the dep array.
+  const getTokenRef = useRef(getAccessToken)
+  useEffect(() => { getTokenRef.current = getAccessToken }, [getAccessToken])
 
   // Stopwatch
   const sessionStartTime = useRef<number | null>(null)
@@ -94,7 +99,14 @@ export function useSentenceBuilder() {
       }
 
       const parsed = parseSigns(tokens)
-      const sentence = await evaluateToSentence(parsed)
+
+      // Auth0 — grab an access token if the user is logged in
+      let token: string | undefined
+      if (getTokenRef.current) {
+        try { token = await getTokenRef.current() } catch { /* not logged in */ }
+      }
+
+      const sentence = await evaluateToSentence(parsed, token)
 
       setPendingSentence(sentence)
 
