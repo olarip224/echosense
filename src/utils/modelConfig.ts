@@ -6,11 +6,13 @@ export const LSTM_MODEL_PATH = '/models/lstm/model.json'
 
 // ASL alphabet in training order.
 // This MUST match the order used during model training — do not reorder.
+// Order matches ImageDataGenerator alphabetical sort from training:
+// A B C D DELETE E F G H I J K L M N NOTHING O P Q R S SPACE T U V W X Y Z
 export const CNN_LABELS: string[] = [
-  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
-  'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
-  'U', 'V', 'W', 'X', 'Y', 'Z',
-  'SPACE', 'DELETE', 'NOTHING',
+  'A', 'B', 'C', 'D', 'DELETE',
+  'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'NOTHING',
+  'O', 'P', 'Q', 'R', 'S', 'SPACE',
+  'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
 ]
 
 // Dynamic gesture labels in training order.

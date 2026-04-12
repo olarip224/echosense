@@ -236,27 +236,22 @@ export function ReferenceSheet({ onClose, currentGesture }: Props) {
                     <div
                       style={{
                         width: '100%',
-                        background: 'rgba(255,255,255,0.03)',
-                        borderRadius: '8px',
-                        padding: '10px 12px',
+                        background: 'rgba(255,255,255,0.04)',
+                        borderRadius: '10px',
+                        padding: '8px 0',
                         marginBottom: '10px',
                         boxSizing: 'border-box',
                         display: 'flex',
+                        justifyContent: 'center',
                         alignItems: 'center',
-                        gap: '12px',
+                        minHeight: '90px',
                       }}
                     >
-                      <div style={{ flexShrink: 0 }}>
-                        <HandDiagram gestureKey={sign.gestureKey} size={80} active={isDetected} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '4px' }}>
-                          Hand shape:
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: 1.5 }}>
-                          {sign.fingers}
-                        </div>
-                      </div>
+                      <HandDiagram gestureKey={sign.gestureKey} size="md" />
+                    </div>
+                    {/* Finger description */}
+                    <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '8px', lineHeight: 1.5 }}>
+                      {sign.fingers}
                     </div>
 
                     {/* Hand shape text */}

@@ -32,6 +32,11 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes handIn {
+  from { transform: scale(0.8); opacity: 0.5; }
+  to   { transform: scale(1.0); opacity: 1.0; }
+}
+
 .main-grid {
   display: grid;
   grid-template-columns: 640px 1fr;

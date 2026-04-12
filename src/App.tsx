@@ -233,7 +233,7 @@ function App() {
 
   return (
     <div style={{ background: '#0f172a', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <GestureFlash text={flashText} />
+      <GestureFlash text={flashText} gestureKey={gestureName} />
 
       {showReference && (
         <ReferenceSheet

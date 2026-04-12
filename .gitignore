@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ML training — large files excluded from git
+asl-alphabet.zip
+model/venv/
+model/data/
+model/**/__pycache__/
+model/__pycache__/

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { GESTURE_MAP } from '../utils/gestureMap'
+import { HandDiagram } from './HandDiagram'
 
 const GESTURES = [
   'Thumb_Up',
@@ -219,6 +220,13 @@ export function PracticeMode({ currentGesture, gestureScore, onExit }: Props) {
             }}
           >
             <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '8px' }}>Sign this:</div>
+            <div
+              key={currentTarget}
+              style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px',
+                       animation: 'handIn 0.2s ease-out' }}
+            >
+              <HandDiagram gestureKey={currentTarget} size="lg" />
+            </div>
             <div style={{ fontSize: '36px', fontWeight: 700, color: '#0f172a' }}>
               {LABELS[currentTarget]}
             </div>
