@@ -56,15 +56,18 @@ function App() {
   const lstmClassifier = useLSTMClassifier()
   const { addFrame, getBuffer, isReady: isBufferReady, clearBuffer } = useLandmarkBuffer()
 
-  const { landmarks, gestureName, gestureScore, isLoaded } = useGestureRecognizer(videoRef, {
-    cnnClassify: cnnClassifier.classify,
-    cnnAvailable: cnnClassifier.isAvailable,
-    lstmClassify: lstmClassifier.classifySequence,
-    lstmAvailable: lstmClassifier.isAvailable,
-    getLandmarkBuffer: getBuffer,
-    isBufferReady,
-    videoElement: videoRef.current,
-  })
+  const { landmarks, gestureName, gestureScore, isLoaded } = useGestureRecognizer(
+    videoRef as React.RefObject<HTMLVideoElement>,
+    {
+      cnnClassify: cnnClassifier.classify,
+      cnnAvailable: cnnClassifier.isAvailable,
+      lstmClassify: lstmClassifier.classifySequence,
+      lstmAvailable: lstmClassifier.isAvailable,
+      getLandmarkBuffer: getBuffer,
+      isBufferReady,
+      videoElement: videoRef.current,
+    },
+  )
   const { transcript, addPhrase, clearTranscript } = useTranscript()
   const { speak, isSpeaking } = useTTS(ELEVENLABS_KEY)
   const sentenceBuilder = useSentenceBuilder(getAccessToken)

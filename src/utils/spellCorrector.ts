@@ -57,8 +57,7 @@ export async function autocorrectWord(raw: string): Promise<string> {
   }
 
   // Strategy 2 — Anthropic API correction
-  const apiKey = (import.meta as Record<string, unknown> & { env: Record<string, string> }).env
-    .VITE_ANTHROPIC_KEY
+  const apiKey = import.meta.env.VITE_ANTHROPIC_KEY as string | undefined
 
   if (!apiKey) {
     return offlineFallback(trimmed)

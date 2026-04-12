@@ -79,35 +79,36 @@ export function useLSTMClassifier() {
         return null
       }
 
-      return tf.tidy(() => {
-        // Flatten each frame: 21 landmarks × 3 = 63
+      // Run the tensor-heavy portion inside tidy; return a plain
+      // probabilities tensor we can pull data off after disposal.
+      const probabilitiesTensor = tf.tidy<tf.Tensor1D>(() => {
         const flat = buffer.map((frame) =>
           frame.flatMap((lm) => [lm.x, lm.y, lm.z])
         )
-
-        // Shape: [1, 30, 63]
         const input = tf.tensor3d([flat])
-
         const predictions = modelRef.current!.predict(input) as tf.Tensor
-        const probs = Array.from(predictions.dataSync())
-
-        const maxIndex = probs.indexOf(Math.max(...probs))
-        const confidence = probs[maxIndex]
-
-        if (confidence < LSTM_CONFIDENCE_THRESHOLD) return null
-
-        const label = LSTM_LABELS[maxIndex]
-        const mapped = LSTM_DISPLAY_MAP[label]
-
-        if (!mapped) return null
-
-        return {
-          label,
-          displayText: mapped.display,
-          confidence,
-          gestureKey: mapped.key,
-        }
+        return predictions.squeeze() as tf.Tensor1D
       })
+
+      const probs = Array.from(probabilitiesTensor.dataSync())
+      probabilitiesTensor.dispose()
+
+      const maxIndex = probs.indexOf(Math.max(...probs))
+      const confidence = probs[maxIndex]
+
+      if (confidence < LSTM_CONFIDENCE_THRESHOLD) return null
+
+      const label = LSTM_LABELS[maxIndex]
+      const mapped = LSTM_DISPLAY_MAP[label]
+
+      if (!mapped) return null
+
+      return {
+        label,
+        displayText: mapped.display,
+        confidence,
+        gestureKey: mapped.key,
+      }
     },
     [isLoaded]
   )

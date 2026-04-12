@@ -289,8 +289,7 @@ export async function evaluateToSentence(
   const reverseKey = [...parsed.aslTokens].reverse().join(' ')
   if (FAST_MAP[reverseKey]) return FAST_MAP[reverseKey]
 
-  const apiKey = (import.meta as Record<string, unknown> & { env: Record<string, string> }).env
-    .VITE_ANTHROPIC_KEY
+  const apiKey = import.meta.env.VITE_ANTHROPIC_KEY as string | undefined
 
   if (!apiKey) {
     console.warn('[SentenceEvaluator] VITE_ANTHROPIC_KEY not set — using fallback')
@@ -436,8 +435,7 @@ export async function getTerpAISuggestions(
   rawTokens: string[],
   accessToken?: string,
 ): Promise<TerpAISuggestion[]> {
-  const apiKey = (import.meta as Record<string, unknown> & { env: Record<string, string> }).env
-    .VITE_ANTHROPIC_KEY
+  const apiKey = import.meta.env.VITE_ANTHROPIC_KEY as string | undefined
 
   if (!apiKey || !originalSentence) {
     return buildFallbackSuggestions(originalSentence)

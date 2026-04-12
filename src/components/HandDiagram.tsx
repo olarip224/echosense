@@ -3,6 +3,8 @@
 // Each gesture is a self-contained SVG. No external images.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import type { JSX } from 'react'
+
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const SKIN_BASE   = '#F0A876'
 const SKIN_MID    = '#E8956D'

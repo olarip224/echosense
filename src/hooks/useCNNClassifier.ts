@@ -61,43 +61,35 @@ export function useCNNClassifier() {
     async (videoElement: HTMLVideoElement): Promise<CNNPrediction | null> => {
       if (!modelRef.current || !isLoaded) return null
 
-      return tf.tidy(() => {
-        // Capture frame from video element
+      // tf.tidy expects a TensorContainer return; we return a plain
+      // object, so we do the tensor-heavy work inside tidy and pull
+      // the final probabilities out as a number[] before returning.
+      const probabilities = tf.tidy<tf.Tensor1D>(() => {
         const tensor = tf.browser.fromPixels(videoElement)
-
-        // Resize to model input size (224×224)
         const resized = tf.image.resizeBilinear(tensor, [224, 224])
-
-        // Normalize pixel values from [0,255] to [0,1]
         const normalized = resized.div(255.0)
-
-        // Add batch dimension: [1, 224, 224, 3]
         const batched = normalized.expandDims(0)
-
-        // Run inference
         const predictions = modelRef.current!.predict(batched) as tf.Tensor
-
-        // Get probabilities as a plain array
-        const probabilities = Array.from(predictions.dataSync())
-
-        // Find the top prediction
-        const maxIndex = probabilities.indexOf(Math.max(...probabilities))
-        const confidence = probabilities[maxIndex]
-
-        if (confidence < CNN_CONFIDENCE_THRESHOLD) return null
-
-        const rawLabel = CNN_LABELS[maxIndex]
-
-        // Skip non-sign classes
-        if (rawLabel === 'NOTHING' || rawLabel === 'DELETE') return null
-
-        return {
-          label: rawLabel,
-          confidence,
-          // Map to gestureKey format used in GESTURE_MAP
-          gestureKey: rawLabel === 'SPACE' ? 'ASL_SPACE' : `ASL_${rawLabel}`,
-        }
+        return predictions.squeeze() as tf.Tensor1D
       })
+
+      const probs = Array.from(probabilities.dataSync())
+      probabilities.dispose()
+
+      const maxIndex = probs.indexOf(Math.max(...probs))
+      const confidence = probs[maxIndex]
+
+      if (confidence < CNN_CONFIDENCE_THRESHOLD) return null
+
+      const rawLabel = CNN_LABELS[maxIndex]
+      // Skip non-sign classes
+      if (rawLabel === 'NOTHING' || rawLabel === 'DELETE') return null
+
+      return {
+        label: rawLabel,
+        confidence,
+        gestureKey: rawLabel === 'SPACE' ? 'ASL_SPACE' : `ASL_${rawLabel}`,
+      }
     },
     [isLoaded]
   )
