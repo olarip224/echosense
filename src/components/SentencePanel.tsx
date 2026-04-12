@@ -6,6 +6,9 @@ interface Props {
   onBuild: () => void
   onClear: () => void
   onSpeak: (text: string) => void
+  // Live gesture detection — same as other modes
+  currentGesture: string | null
+  displayText: string
 }
 
 export function SentencePanel({
@@ -16,7 +19,11 @@ export function SentencePanel({
   onBuild,
   onClear,
   onSpeak,
+  currentGesture,
+  displayText,
 }: Props) {
+  const hasLiveGesture = currentGesture !== null && currentGesture !== 'None' && displayText !== ''
+
   return (
     <div
       style={{
@@ -29,7 +36,57 @@ export function SentencePanel({
         gap: '16px',
       }}
     >
-      {/* ── Section 1: Sign buffer ─────────────────────────────────────── */}
+      {/* ── Live gesture detection ─────────────────────────────────────── */}
+      <div
+        style={{
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: '10px',
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          minHeight: '48px',
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+          <span
+            style={{
+              fontSize: '10px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              color: '#475569',
+            }}
+          >
+            Detecting
+          </span>
+          <span
+            style={{
+              fontSize: '22px',
+              fontWeight: 600,
+              color: hasLiveGesture ? '#ffffff' : '#334155',
+              minHeight: '28px',
+              letterSpacing: hasLiveGesture && displayText.length === 1 ? '0.05em' : '0',
+            }}
+          >
+            {hasLiveGesture ? displayText : '—'}
+          </span>
+        </div>
+
+        {/* Pulsing dot when hand is active */}
+        <div
+          style={{
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            background: hasLiveGesture ? '#1D9E75' : '#1e293b',
+            animation: hasLiveGesture ? 'pulse 1s ease-in-out infinite' : 'none',
+            transition: 'background 0.2s',
+          }}
+        />
+      </div>
+
+      {/* ── Sign buffer ────────────────────────────────────────────────── */}
       <div>
         <div
           style={{
@@ -43,7 +100,7 @@ export function SentencePanel({
             gap: '6px',
           }}
         >
-          Signing...
+          Signs collected
           {bufferDisplay.length > 0 && (
             <span
               style={{
@@ -66,7 +123,7 @@ export function SentencePanel({
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
             {bufferDisplay.map((token, i) => (
               <span
-                key={i}
+                key={`${token}-${i}`}
                 style={{
                   background: 'rgba(29,158,117,0.15)',
                   color: '#86efac',
@@ -74,6 +131,7 @@ export function SentencePanel({
                   padding: '2px 9px',
                   fontSize: '11px',
                   fontFamily: 'monospace',
+                  animation: 'fadeUp 0.15s ease-out',
                 }}
               >
                 {token}
@@ -83,7 +141,7 @@ export function SentencePanel({
         )}
       </div>
 
-      {/* ── Section 2: Current sentence output ────────────────────────── */}
+      {/* ── Current sentence output ────────────────────────────────────── */}
       <div>
         <div
           style={{
@@ -168,7 +226,7 @@ export function SentencePanel({
         </div>
       </div>
 
-      {/* ── Section 3: Sentence history ───────────────────────────────── */}
+      {/* ── Sentence history ──────────────────────────────────────────── */}
       {sentenceHistory.length > 0 && (
         <div>
           <div
@@ -213,7 +271,10 @@ export function SentencePanel({
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '7px 0',
-                  borderBottom: i < sentenceHistory.length - 1 ? '1px solid #1e293b' : 'none',
+                  // Use explicit border properties to avoid React style-conflict warning
+                  borderBottomWidth: i < sentenceHistory.length - 1 ? '1px' : '0',
+                  borderBottomStyle: 'solid',
+                  borderBottomColor: '#1e293b',
                   gap: '8px',
                 }}
               >
@@ -240,7 +301,7 @@ export function SentencePanel({
         </div>
       )}
 
-      {/* ── Section 4: Controls ───────────────────────────────────────── */}
+      {/* ── Controls ──────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
         <div style={{ display: 'flex', gap: '8px' }}>
           <button
@@ -250,19 +311,12 @@ export function SentencePanel({
               flex: 1,
               padding: '9px 16px',
               borderRadius: '8px',
-              background:
-                isProcessing || bufferDisplay.length === 0
-                  ? '#1e293b'
-                  : '#1D9E75',
-              color:
-                isProcessing || bufferDisplay.length === 0 ? '#4b5563' : '#ffffff',
+              background: isProcessing || bufferDisplay.length === 0 ? '#1e293b' : '#1D9E75',
+              color: isProcessing || bufferDisplay.length === 0 ? '#4b5563' : '#ffffff',
               border: 'none',
               fontSize: '13px',
               fontWeight: 600,
-              cursor:
-                isProcessing || bufferDisplay.length === 0
-                  ? 'not-allowed'
-                  : 'pointer',
+              cursor: isProcessing || bufferDisplay.length === 0 ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

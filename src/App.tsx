@@ -490,6 +490,8 @@ function App() {
               onBuild={sentenceBuilder.buildSentence}
               onClear={sentenceBuilder.clearSentences}
               onSpeak={(text) => speak(text, selectedVoiceId)}
+              currentGesture={gestureName}
+              displayText={displayText}
             />
           ) : (
             <OutputPanel

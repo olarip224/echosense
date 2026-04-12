@@ -27,6 +27,23 @@ const WORD_MAP: Record<string, string> = {
   'ASL_WATER':      'WATER',
   'ASL_EAT':        'EAT',
   'ASL_FRIEND':     'FRIEND',
+  'ASL_BATHROOM':   'BATHROOM',
+  'ASL_FOOD':       'FOOD',
+  'ASL_YES':        'YES',
+  'ASL_NO':         'NO',
+  'ASL_WHAT':       'WHAT',
+  'ASL_WHO':        'WHO',
+  'ASL_WHEN':       'WHEN',
+  'ASL_HOW':        'HOW',
+  'ASL_SICK':       'SICK',
+  'ASL_GOOD':       'GOOD',
+  'ASL_BAD':        'BAD',
+  'ASL_WORK':       'WORK',
+  'ASL_HOME':       'HOME',
+  'ASL_SCHOOL':     'SCHOOL',
+  'ASL_MONEY':      'MONEY',
+  'ASL_TIME':       'TIME',
+  'ASL_THANK':      'THANK',
 }
 
 function isLetter(sign: string): boolean {
