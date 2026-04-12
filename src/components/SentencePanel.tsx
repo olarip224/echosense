@@ -1,4 +1,5 @@
 import { formatStopwatch } from '../hooks/useSentenceBuilder'
+import type { TerpAISuggestion } from '../utils/sentenceEvaluator'
 
 interface Props {
   bufferDisplay: string[]
@@ -8,6 +9,8 @@ interface Props {
   sessionSeconds: number
   isTiming: boolean
   isActive: boolean
+  suggestions: TerpAISuggestion[]
+  isSuggestionsLoading: boolean
   onStart: () => void
   onStop: () => void
   onClear: () => void
@@ -28,6 +31,8 @@ export function SentencePanel({
   sessionSeconds,
   isTiming,
   isActive,
+  suggestions,
+  isSuggestionsLoading,
   onStart,
   onStop,
   onClear,
@@ -35,6 +40,81 @@ export function SentencePanel({
   currentGesture,
   displayText,
 }: Props) {
+  // Shared box style used by both Original and Suggestion rows.
+  const sentenceBoxStyle: React.CSSProperties = {
+    padding: '14px 16px',
+    background: 'var(--surface-2)',
+    border: '1px solid var(--border)',
+    borderRadius: 'var(--r-md)',
+    minHeight: '64px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    width: '100%',
+  }
+
+  const sentenceTextStyle: React.CSSProperties = {
+    fontFamily: 'var(--font-display)',
+    fontSize: '22px',
+    fontWeight: 400,
+    fontStyle: 'italic',
+    color: 'var(--text)',
+    letterSpacing: '-0.01em',
+    lineHeight: 1.4,
+    flex: 1,
+    margin: 0,
+  }
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: '10px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.09em',
+    color: 'var(--text-3)',
+    fontWeight: 500,
+  }
+
+  function SpeakButton({ text }: { text: string }) {
+    return (
+      <button
+        onClick={() => onSpeak(text)}
+        title="Speak this sentence"
+        style={{
+          width: '36px',
+          height: '36px',
+          flexShrink: 0,
+          borderRadius: 'var(--r-sm)',
+          border: '1px solid var(--border)',
+          background: 'var(--surface)',
+          color: 'var(--primary)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: 0,
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path
+            d="M2 5.5h3l3.5-3v11L5 11H2a1 1 0 01-1-1V6.5a1 1 0 011-1z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M11 5.5c1.5 0.8 1.5 4.2 0 5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M13 3.5c2.5 1.8 2.5 7.2 0 9"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+    )
+  }
   const hasLiveGesture = isActive && currentGesture !== null && currentGesture !== 'None' && displayText !== ''
   const showStopwatch = isTiming || sessionSeconds > 0
 
@@ -263,37 +343,17 @@ export function SentencePanel({
         )}
       </div>
 
-      {/* ── Sentence output (3 states) ────────────────────────────── */}
-      <div>
-        <div
-          style={{
-            fontSize: '10px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.09em',
-            color: 'var(--text-3)',
-            fontWeight: 500,
-            marginBottom: '10px',
-          }}
-        >
-          Sentence
-        </div>
-
-        <div
-          style={{
-            background: 'var(--surface-2)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--r-md)',
-            padding: '14px 16px',
-            minHeight: '60px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          {isProcessing ? (
-            // STATE B — Processing
+      {/* ── Sentence output ─────────────────────────────────────────
+           3 display states:
+             A: waiting/empty      — no sentence yet
+             B: processing         — building
+             C: released           — Original + TerpAI Suggestions
+      ──────────────────────────────────────────────────────────── */}
+      {isProcessing ? (
+        /* STATE B — Processing */
+        <div>
+          <div style={{ ...labelStyle, marginBottom: '10px' }}>Sentence</div>
+          <div style={sentenceBoxStyle}>
             <div style={{ flex: 1 }}>
               <div className="skeleton" style={{ height: '28px', width: '70%' }} />
               <span
@@ -308,53 +368,183 @@ export function SentencePanel({
                 Building sentence…
               </span>
             </div>
-          ) : currentSentence ? (
-            // STATE C — Released
-            <>
-              <p
-                key={currentSentence}
+          </div>
+        </div>
+      ) : currentSentence ? (
+        /* STATE C — Released: Original + Suggestions */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* ── ORIGINAL ─────────────────────────────────────────── */}
+          <div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: '10px',
+              }}
+            >
+              <span style={labelStyle}>Original</span>
+
+              {/* TerpAI badge */}
+              <span
                 style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: '22px',
-                  fontWeight: 400,
-                  fontStyle: 'italic',
-                  color: 'var(--text)',
-                  letterSpacing: '-0.01em',
-                  lineHeight: 1.4,
-                  flex: 1,
-                  margin: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  fontSize: '10px',
+                  color: 'var(--primary)',
+                  fontWeight: 600,
+                  padding: '2px 8px',
+                  background: 'rgba(26,77,58,0.08)',
+                  border: '1px solid rgba(26,77,58,0.15)',
+                  borderRadius: 'var(--r-pill)',
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: '#E03A3E', // UMD red
+                    display: 'inline-block',
+                  }}
+                />
+                TerpAI
+              </span>
+            </div>
+
+            <div key={currentSentence} style={sentenceBoxStyle}>
+              <p
+                style={{
+                  ...sentenceTextStyle,
                   animation: 'signPop 0.4s cubic-bezier(0.34,1.56,0.64,1)',
                 }}
               >
                 {currentSentence}
               </p>
-              <button
-                onClick={() => onSpeak(currentSentence)}
-                title="Speak"
-                style={{
-                  flexShrink: 0,
-                  padding: '6px 14px',
-                  borderRadius: 'var(--r-sm)',
-                  background: 'var(--primary)',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: 500,
-                }}
-              >
-                Speak
-              </button>
-            </>
-          ) : (
-            // STATE A — Empty / waiting
+              <SpeakButton text={currentSentence} />
+            </div>
+          </div>
+
+          {/* ── SUGGESTIONS ──────────────────────────────────────── */}
+          <div>
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '10px',
-                opacity: 0.7,
+                justifyContent: 'space-between',
+                marginBottom: '10px',
               }}
             >
+              <span style={labelStyle}>Suggestions</span>
+
+              {isSuggestionsLoading && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                    fontSize: '10px',
+                    color: 'var(--text-3)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '10px',
+                      height: '10px',
+                      borderRadius: '50%',
+                      border: '1.5px solid var(--border)',
+                      borderTopColor: 'var(--primary)',
+                      animation: 'spin 0.8s linear infinite',
+                    }}
+                  />
+                  Analyzing…
+                </div>
+              )}
+            </div>
+
+            {isSuggestionsLoading && (
+              /* 3 skeleton boxes */
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    className="skeleton"
+                    style={{
+                      height: '64px',
+                      borderRadius: 'var(--r-md)',
+                      animationDelay: `${i * 0.1}s`,
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+
+            {!isSuggestionsLoading && suggestions.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {suggestions.map((s, index) => (
+                  <div
+                    key={`${currentSentence}-${index}`}
+                    style={{
+                      ...sentenceBoxStyle,
+                      animation: `fadeUp 0.3s ease ${index * 0.08}s both`,
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          fontSize: '10px',
+                          color: 'var(--amber)',
+                          fontWeight: 600,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.06em',
+                          marginBottom: '4px',
+                        }}
+                      >
+                        {s.reasoning}
+                      </div>
+                      <p
+                        style={{
+                          ...sentenceTextStyle,
+                          fontSize: '20px',
+                        }}
+                      >
+                        {s.sentence}
+                      </p>
+                    </div>
+                    <SpeakButton text={s.sentence} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {!isSuggestionsLoading && suggestions.length === 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '48px',
+                  color: 'var(--text-3)',
+                  fontSize: '11px',
+                  fontStyle: 'italic',
+                }}
+              >
+                Suggestions will appear here
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* STATE A — Empty / waiting */
+        <div>
+          <div style={{ ...labelStyle, marginBottom: '10px' }}>Sentence</div>
+          <div style={sentenceBoxStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', opacity: 0.7 }}>
               <div
                 style={{
                   width: '24px',
@@ -374,19 +564,13 @@ export function SentencePanel({
                   }}
                 />
               </div>
-              <span
-                style={{
-                  fontSize: '12px',
-                  color: 'var(--text-3)',
-                  fontStyle: 'italic',
-                }}
-              >
+              <span style={{ fontSize: '12px', color: 'var(--text-3)', fontStyle: 'italic' }}>
                 {bufferDisplay.length > 0 ? 'Building sentence…' : 'Waiting for signs…'}
               </span>
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── History ───────────────────────────────────────────────── */}
       {sentenceHistory.length > 0 && (

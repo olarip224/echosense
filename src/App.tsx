@@ -19,6 +19,7 @@ import { LoaderScreen } from './components/LoaderScreen'
 import { CustomCursor } from './components/CustomCursor'
 import { AboutModal } from './components/AboutModal'
 import { AuthButton } from './components/AuthButton'
+import { ASLBackground } from './components/ASLBackground'
 
 const ELEVENLABS_KEY = import.meta.env.VITE_ELEVENLABS_KEY ?? ''
 
@@ -482,6 +483,19 @@ function App() {
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      {/* Background watermark — renders at z-index 0 behind everything */}
+      <ASLBackground />
+
+      {/* All app content sits in its own stacking context at z-index 1 */}
+      <div
+        style={{
+          position: 'relative',
+          zIndex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          flex: 1,
+        }}
+      >
       <CustomCursor />
       <LoaderScreen isLoaded={isLoaded} />
       <GestureFlash text={flashText} gestureKey={gestureName} />
@@ -745,6 +759,8 @@ function App() {
               sessionSeconds={sentenceBuilder.sessionSeconds}
               isTiming={sentenceBuilder.isTiming}
               isActive={isSentenceActive}
+              suggestions={sentenceBuilder.suggestions}
+              isSuggestionsLoading={sentenceBuilder.isSuggestionsLoading}
               onStart={onSentenceStart}
               onStop={onSentenceStop}
               onClear={() => { sentenceBuilder.clearSentences(); setIsSentenceActive(false) }}
@@ -793,6 +809,7 @@ function App() {
           )}
         </div>
       </main>
+      </div>
     </div>
   )
 }

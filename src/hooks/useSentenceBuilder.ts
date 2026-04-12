@@ -1,7 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { lexSigns } from '../utils/signLexer'
 import { parseSigns } from '../utils/signParser'
-import { evaluateToSentence } from '../utils/sentenceEvaluator'
+import {
+  evaluateToSentence,
+  getTerpAISuggestions,
+  type TerpAISuggestion,
+} from '../utils/sentenceEvaluator'
 
 const AUTO_COMMIT_MS = 3000
 const HAND_DROP_GRACE_MS = 4000
@@ -39,6 +43,39 @@ export function useSentenceBuilder(getAccessToken?: () => Promise<string | undef
 
   const isProcessingRef = useRef(false)
 
+  // ── TerpAI conversation monitor ───────────────────────────────────
+  const conversationHistory = useRef<string[]>([])
+  const prepareRawTokens = useRef<string[]>([])
+  const [suggestions, setSuggestions] = useState<TerpAISuggestion[]>([])
+  const [isSuggestionsLoading, setIsSuggestionsLoading] = useState(false)
+
+  const triggerSuggestions = useCallback(
+    async (sentence: string, rawTokens: string[]) => {
+      setIsSuggestionsLoading(true)
+      setSuggestions([])
+
+      let token: string | undefined
+      if (getTokenRef.current) {
+        try { token = await getTokenRef.current() } catch { /* not logged in */ }
+      }
+
+      try {
+        const results = await getTerpAISuggestions(
+          sentence,
+          conversationHistory.current,
+          rawTokens,
+          token,
+        )
+        setSuggestions(results)
+      } catch (err) {
+        console.warn('[useSentenceBuilder] suggestions fetch failed:', err)
+      } finally {
+        setIsSuggestionsLoading(false)
+      }
+    },
+    [],
+  )
+
   // ── Stopwatch helpers ──────────────────────────────────────────────
   const stopStopwatch = useCallback(() => {
     setIsTiming(false)
@@ -68,10 +105,13 @@ export function useSentenceBuilder(getAccessToken?: () => Promise<string | undef
     }
   }, [])
 
-  // PHASE 2: Move pending → current, add to history, clear buffer
+  // PHASE 2: Move pending → current, add to history, clear buffer,
+  // and fire a TerpAI suggestions request asynchronously.
   const releaseSentence = useCallback(() => {
+    let released = ''
     setPendingSentence((pending) => {
       if (!pending) return ''
+      released = pending
       setCurrentSentence(pending)
       setSentenceHistory((prev) => [...prev, pending])
       signBuffer.current = []
@@ -80,7 +120,18 @@ export function useSentenceBuilder(getAccessToken?: () => Promise<string | undef
       stopStopwatch()
       return ''
     })
-  }, [stopStopwatch])
+
+    if (!released) return
+
+    // Append to TerpAI conversation memory (cap at 20 to limit token bloat)
+    const next = [...conversationHistory.current, released]
+    conversationHistory.current = next.length > 20 ? next.slice(-20) : next
+
+    // Fire suggestions async — don't block the UI. Use the raw tokens
+    // captured during prepareSentence, since signBuffer is already cleared.
+    const rawTokens = [...prepareRawTokens.current]
+    triggerSuggestions(released, rawTokens)
+  }, [stopStopwatch, triggerSuggestions])
 
   // PHASE 1: Lex → parse → evaluate → store in pending
   const prepareSentence = useCallback(async () => {
@@ -97,6 +148,10 @@ export function useSentenceBuilder(getAccessToken?: () => Promise<string | undef
         setIsProcessing(false)
         return
       }
+
+      // Snapshot raw tokens BEFORE the buffer is cleared in releaseSentence.
+      // TerpAI needs the original gestureKeys for its conversation context.
+      prepareRawTokens.current = [...signBuffer.current]
 
       const parsed = parseSigns(tokens)
 
@@ -184,10 +239,14 @@ export function useSentenceBuilder(getAccessToken?: () => Promise<string | undef
     if (handDropTimer.current !== null) clearTimeout(handDropTimer.current)
     if (releaseTimer.current !== null) clearTimeout(releaseTimer.current)
     signBuffer.current = []
+    conversationHistory.current = []
+    prepareRawTokens.current = []
     setBufferDisplay([])
     setCurrentSentence('')
     setPendingSentence('')
     setSentenceHistory([])
+    setSuggestions([])
+    setIsSuggestionsLoading(false)
     resetStopwatch()
   }, [resetStopwatch])
 
@@ -205,5 +264,8 @@ export function useSentenceBuilder(getAccessToken?: () => Promise<string | undef
     clearSentences,
     sessionSeconds,
     isTiming,
+    suggestions,
+    isSuggestionsLoading,
+    getConversationHistory: () => conversationHistory.current,
   }
 }

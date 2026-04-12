@@ -341,3 +341,152 @@ export async function evaluateToSentence(
     return buildFallbackSentence(parsed)
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// TerpAI — alternative-sentence suggestion agent
+// ═══════════════════════════════════════════════════════════════════
+
+export type TerpAISuggestion = {
+  sentence: string
+  reasoning: string  // short label like "question form" / "more detail"
+}
+
+function buildTerpAIPrompt(
+  originalSentence: string,
+  conversationHistory: string[],
+  rawTokens: string[],
+): string {
+  const historyBlock =
+    conversationHistory.length > 1
+      ? conversationHistory
+          .slice(0, -1)   // exclude the current sentence (already shown above)
+          .slice(-8)      // keep the last 8 for context
+          .map((s, i) => `${i + 1}. "${s}"`)
+          .join('\n')
+      : 'No prior conversation yet.'
+
+  return `You are TerpAI — an ASL communication assistant integrated into EchoSense at the University of Maryland. You monitor a Deaf user's full signing conversation and suggest alternative phrasings to help them communicate more precisely.
+
+## Current sentence (just evaluated)
+"${originalSentence}"
+
+## Raw ASL signs that produced this sentence
+${rawTokens.join(' → ')}
+
+## Full conversation so far (most recent last)
+${historyBlock}
+
+## Your task
+Generate exactly 3 alternative sentence suggestions that the user might have meant, given:
+1. The raw ASL signs they showed
+2. The conversation context so far
+3. Natural variations of the evaluated sentence
+
+Each suggestion must:
+- Be grammatically correct English
+- Be meaningfully different from the original (not just punctuation changes)
+- Make sense given the conversation context
+- Be between 3 and 20 words
+- Include a 1–3 word label describing how it differs from the original
+
+## Output format
+Return ONLY a valid JSON array. No explanation. No markdown. No code blocks. Just the raw array:
+
+[
+  { "sentence": "first alternative sentence here.", "reasoning": "question form" },
+  { "sentence": "second alternative sentence here.", "reasoning": "more detail" },
+  { "sentence": "third alternative sentence here.", "reasoning": "softer tone" }
+]
+
+## Examples of good reasoning labels
+"question form", "more formal", "urgent tone", "adds context", "simpler phrasing", "past tense", "includes please", "third person", "stronger need", "confirms understanding", "adds emotion", "follow-up", "clarification", "alternative need"
+
+## Rules
+- Never repeat the original sentence as a suggestion
+- Never output null, undefined, or empty strings
+- If conversation has no prior context, generate plausible variations of the current sentence
+- Always return exactly 3 objects in the array
+- Suggestions should feel like a Deaf user's real communication needs, not academic paraphrases`
+}
+
+function buildFallbackSuggestions(original: string): TerpAISuggestion[] {
+  const isQuestion = original.endsWith('?')
+  const base = original.replace(/[.!?]$/, '').trim()
+  const stripped = base.toLowerCase().replace(/^i (want|need|am) /i, '')
+
+  return [
+    {
+      sentence: isQuestion ? `${base}, please.` : `${base}?`,
+      reasoning: isQuestion ? 'polite form' : 'question form',
+    },
+    {
+      sentence: `Can you help me with: ${base.toLowerCase()}?`,
+      reasoning: 'request for help',
+    },
+    {
+      sentence: `I really need ${stripped || base.toLowerCase()}.`,
+      reasoning: 'stronger need',
+    },
+  ]
+}
+
+export async function getTerpAISuggestions(
+  originalSentence: string,
+  conversationHistory: string[],
+  rawTokens: string[],
+  accessToken?: string,
+): Promise<TerpAISuggestion[]> {
+  const apiKey = (import.meta as Record<string, unknown> & { env: Record<string, string> }).env
+    .VITE_ANTHROPIC_KEY
+
+  if (!apiKey || !originalSentence) {
+    return buildFallbackSuggestions(originalSentence)
+  }
+
+  const defaultHeaders: Record<string, string> = {}
+  if (accessToken) defaultHeaders['X-Auth-Token'] = accessToken
+
+  const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true, defaultHeaders })
+
+  try {
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 300,
+      messages: [{ role: 'user', content: buildTerpAIPrompt(originalSentence, conversationHistory, rawTokens) }],
+    })
+
+    const raw = message.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('')
+      .trim()
+
+    // Strip accidental code-fences
+    const cleaned = raw
+      .replace(/^```json\s*/i, '')
+      .replace(/^```\s*/i, '')
+      .replace(/\s*```$/, '')
+      .trim()
+
+    const parsed = JSON.parse(cleaned) as TerpAISuggestion[]
+
+    if (
+      !Array.isArray(parsed) ||
+      parsed.length !== 3 ||
+      parsed.some(
+        (s) =>
+          !s ||
+          typeof s.sentence !== 'string' ||
+          typeof s.reasoning !== 'string' ||
+          s.sentence.trim().length < 2,
+      )
+    ) {
+      return buildFallbackSuggestions(originalSentence)
+    }
+
+    return parsed
+  } catch (err) {
+    console.warn('[TerpAI] suggestions failed, using fallback:', err)
+    return buildFallbackSuggestions(originalSentence)
+  }
+}
