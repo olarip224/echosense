@@ -325,20 +325,6 @@ hello, thank you, please, sorry, help, more, finished, want, understand, where, 
 
 ---
 
-## Prizes targeted at BitCamp 2026
-
-- Best Social Good Hack (Bitcamp)
-- Bloomberg Most Philanthropic Hack
-- Best Machine Learning Track Hack (Bitcamp)
-- Best UI/UX Hack (Bitcamp)
-- TerpAI Ultimate Agent Showdown (Cloudforce / Microsoft)
-- MLH Best Use of ElevenLabs
-- MLH Best Use of Auth0
-- MLH Best Use of Auth0 AI Agents
-- MLH Best Domain Name from GoDaddy Registry
-
----
-
 ## Accessibility
 
 - All camera permissions requested with plain-language explanations
