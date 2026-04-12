@@ -7,7 +7,9 @@ interface Props {
   isProcessing: boolean
   sessionSeconds: number
   isTiming: boolean
-  onBuild: () => void
+  isActive: boolean
+  onStart: () => void
+  onStop: () => void
   onClear: () => void
   onSpeak: (text: string) => void
   currentGesture: string | null
@@ -25,13 +27,15 @@ export function SentencePanel({
   isProcessing,
   sessionSeconds,
   isTiming,
-  onBuild,
+  isActive,
+  onStart,
+  onStop,
   onClear,
   onSpeak,
   currentGesture,
   displayText,
 }: Props) {
-  const hasLiveGesture = currentGesture !== null && currentGesture !== 'None' && displayText !== ''
+  const hasLiveGesture = isActive && currentGesture !== null && currentGesture !== 'None' && displayText !== ''
   const showStopwatch = isTiming || sessionSeconds > 0
 
   return (
@@ -73,7 +77,7 @@ export function SentencePanel({
           <div
             style={{
               fontFamily: hasLiveGesture ? 'var(--font-display)' : 'var(--font-ui)',
-              fontSize: hasLiveGesture ? '26px' : '22px',
+              fontSize: hasLiveGesture ? '26px' : (isActive ? '22px' : '14px'),
               fontStyle: hasLiveGesture ? 'italic' : 'normal',
               fontWeight: hasLiveGesture ? 400 : 300,
               color: hasLiveGesture ? 'var(--primary)' : 'var(--border-2)',
@@ -82,7 +86,7 @@ export function SentencePanel({
               lineHeight: 1.1,
             }}
           >
-            {hasLiveGesture ? displayText : '—'}
+            {hasLiveGesture ? displayText : isActive ? '—' : 'Press Start to begin'}
           </div>
         </div>
 
@@ -452,66 +456,113 @@ export function SentencePanel({
         </div>
       )}
 
-      {/* ── Controls ──────────────────────────────────────────────── */}
+      {/* ── Controls (Start / Stop / Clear) ─────────────────────── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ display: 'flex', gap: '8px' }}>
+        {!isActive ? (
+          /* INACTIVE — full-width Start button */
           <button
-            onClick={onBuild}
-            disabled={isProcessing || bufferDisplay.length === 0}
+            onClick={onStart}
+            disabled={isProcessing}
             style={{
-              flex: 1,
-              padding: '10px 16px',
+              width: '100%',
+              padding: '12px 16px',
               borderRadius: 'var(--r-md)',
-              background: isProcessing || bufferDisplay.length === 0 ? 'var(--surface-2)' : 'var(--primary)',
-              color: isProcessing || bufferDisplay.length === 0 ? 'var(--text-3)' : '#ffffff',
-              border: `1px solid ${isProcessing || bufferDisplay.length === 0 ? 'var(--border)' : 'var(--primary)'}`,
-              fontSize: '13px',
+              background: 'var(--primary)',
+              color: '#ffffff',
+              border: 'none',
+              fontSize: '14px',
               fontWeight: 500,
+              letterSpacing: '0.02em',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '7px',
-              cursor: isProcessing || bufferDisplay.length === 0 ? 'not-allowed' : 'pointer',
+              gap: '8px',
+              cursor: isProcessing ? 'not-allowed' : 'pointer',
+              opacity: isProcessing ? 0.6 : 1,
             }}
           >
-            {isProcessing ? (
-              <>
-                <span
-                  style={{
-                    width: '12px',
-                    height: '12px',
-                    border: '2px solid rgba(255,255,255,0.3)',
-                    borderTopColor: 'var(--text-3)',
-                    borderRadius: '50%',
-                    animation: 'spin 0.7s linear infinite',
-                    display: 'inline-block',
-                  }}
-                />
-                Building…
-              </>
-            ) : (
-              'Build sentence'
-            )}
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: '#ffffff',
+                display: 'inline-block',
+              }}
+            />
+            Start session
           </button>
+        ) : (
+          /* ACTIVE — Stop & build + Clear */
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={onStop}
+              disabled={isProcessing}
+              style={{
+                flex: 1,
+                padding: '10px 16px',
+                borderRadius: 'var(--r-md)',
+                background: isProcessing ? 'var(--surface-2)' : 'var(--amber)',
+                color: isProcessing ? 'var(--text-3)' : '#ffffff',
+                border: `1px solid ${isProcessing ? 'var(--border)' : 'var(--amber)'}`,
+                fontSize: '13px',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '7px',
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {isProcessing ? (
+                <>
+                  <span
+                    style={{
+                      width: '12px',
+                      height: '12px',
+                      border: '2px solid rgba(255,255,255,0.3)',
+                      borderTopColor: '#ffffff',
+                      borderRadius: '50%',
+                      animation: 'spin 0.7s linear infinite',
+                      display: 'inline-block',
+                    }}
+                  />
+                  Building…
+                </>
+              ) : (
+                <>
+                  <span
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      background: '#ffffff',
+                      display: 'inline-block',
+                    }}
+                  />
+                  Stop &amp; build
+                </>
+              )}
+            </button>
 
-          <button
-            onClick={onClear}
-            style={{
-              padding: '10px 16px',
-              borderRadius: 'var(--r-md)',
-              background: 'transparent',
-              color: 'var(--text-3)',
-              border: '1px solid var(--border)',
-              fontSize: '13px',
-            }}
-          >
-            Clear
-          </button>
-        </div>
+            <button
+              onClick={onClear}
+              style={{
+                padding: '10px 16px',
+                borderRadius: 'var(--r-md)',
+                background: 'transparent',
+                color: 'var(--text-3)',
+                border: '1px solid var(--border)',
+                fontSize: '13px',
+              }}
+            >
+              Clear
+            </button>
+          </div>
+        )}
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', alignItems: 'center' }}>
           <span style={{ fontSize: '10px', color: 'var(--text-3)' }}>
-            or pause 3s to auto-build
+            {isActive ? 'or pause 3s to auto-build' : 'Start to begin capturing signs'}
           </span>
           <span style={{ fontSize: '10px', color: 'var(--border-2)', textAlign: 'center', lineHeight: 1.6 }}>
             Spell letter-by-letter ·{' '}

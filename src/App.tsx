@@ -78,6 +78,11 @@ function App() {
 
   useEffect(() => { isSpellActiveRef.current = isSpellActive }, [isSpellActive])
 
+  // ── Sentence-mode session state ────────────────────────────────────
+  const [isSentenceActive, setIsSentenceActive] = useState(false)
+  const isSentenceActiveRef = useRef(false)
+  useEffect(() => { isSentenceActiveRef.current = isSentenceActive }, [isSentenceActive])
+
   // ── TTS toggles (FIX 1E, 2C) ────────────────────────────────────────
   const [spellTTSEnabled, setSpellTTSEnabled] = useState(false)
   const [phraseTTSEnabled, setPhraseTTSEnabled] = useState(false)
@@ -161,10 +166,14 @@ function App() {
   useEffect(() => {
     const hasHand = landmarks !== null
     if (!hasHand && hadLandmarksRef.current) {
-      if (modeRef.current === 'sentence') sentenceBuilder.onHandDrop()
+      if (modeRef.current === 'sentence' && isSentenceActiveRef.current) {
+        sentenceBuilder.onHandDrop()
+      }
     }
     if (hasHand && !hadLandmarksRef.current) {
-      if (modeRef.current === 'sentence') sentenceBuilder.onHandReturn()
+      if (modeRef.current === 'sentence' && isSentenceActiveRef.current) {
+        sentenceBuilder.onHandReturn()
+      }
     }
     hadLandmarksRef.current = hasHand
   }, [landmarks])
@@ -255,8 +264,12 @@ function App() {
       gestureName !== 'None' &&
       gestureName !== 'ASL_NOTHING'
 
-    // Sentence mode — bypass displayText dedup
+    // Sentence mode — bypass displayText dedup; only if session active
     if (canCommit && modeRef.current === 'sentence') {
+      if (!isSentenceActiveRef.current) {
+        holdCountRef.current = 0
+        return
+      }
       sentenceBuilder.addSign(gestureName)
       sentenceBuilder.onHandReturn()
       holdCountRef.current = 0
@@ -309,6 +322,26 @@ function App() {
       spellCooldown.current = 0
       spellLastGesture.current = null
       spellLocked.current = false
+    }
+
+    // Reset sentence session when leaving sentence mode
+    if (m !== 'sentence') {
+      setIsSentenceActive(false)
+    }
+  }
+
+  // ── Sentence session controls ──────────────────────────────────────
+  function onSentenceStart() {
+    setIsSentenceActive(true)
+    holdCountRef.current = 0
+    lastCommittedRef.current = ''
+  }
+
+  function onSentenceStop() {
+    setIsSentenceActive(false)
+    // If there's a buffer, build it now. If nothing, just deactivate.
+    if (sentenceBuilder.bufferDisplay.length > 0) {
+      sentenceBuilder.buildSentence()
     }
   }
 
@@ -658,8 +691,10 @@ function App() {
               isProcessing={sentenceBuilder.isProcessing}
               sessionSeconds={sentenceBuilder.sessionSeconds}
               isTiming={sentenceBuilder.isTiming}
-              onBuild={sentenceBuilder.buildSentence}
-              onClear={sentenceBuilder.clearSentences}
+              isActive={isSentenceActive}
+              onStart={onSentenceStart}
+              onStop={onSentenceStop}
+              onClear={() => { sentenceBuilder.clearSentences(); setIsSentenceActive(false) }}
               onSpeak={(text) => speak(text, selectedVoiceId)}
               currentGesture={gestureName}
               displayText={rawDisplay}
